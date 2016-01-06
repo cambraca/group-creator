@@ -4,23 +4,26 @@ module GroupCreator.Populations
 , newPopulation
 , selectTwo
 , bestIn
+, bestFitnessIn
+, newP
 ) where
 
---import qualified Data.Map as M
 import Data.Map
 import GroupCreator.Groupings
 import GroupCreator.Evaluation
 import GroupCreator.People
+import Control.Monad
+import Control.Monad.Random
 
---data Population = Population [Grouping]
---  deriving (Eq, Show)
 type Population = Map Double Grouping
 
-randomPopulation :: [Condition] -> People -> Population
-randomPopulation conditions people = fromList $ Prelude.map convert groupings
+populationFromList conditions people groupings = Data.Map.fromList $ Prelude.map convert groupings
+  where convert a = (fitness 0 conditions people a, a)
+
+randomPopulation :: [Condition] -> People -> Int -> Population
+randomPopulation conditions people size = populationFromList conditions people groupings
   where
-    convert :: Grouping -> (Double, Grouping)
-    convert a = (fitness 0 conditions people a, a)
+    --TODO: generate real random population
     groupings =
       [ Grouping [[19,23,2],[12,25,11,27],[13,0,20,28],[14,21,1,9],[4,29,26,7],[16,24,22,3],[10,6,15,5],[18,17,8]]
       , Grouping [[26,0,14,1],[7,22,19],[11,29,13,25],[21,8,18,10],[4,20,5,12,6],[9,24,3],[23,15,17],[27,2,16,28]]
@@ -136,12 +139,61 @@ randomPopulation conditions people = fromList $ Prelude.map convert groupings
     mutations, so for 100 people, there will probably always be 1
     mutation.
 -}
-newPopulation :: Population -> Population
-newPopulation p = deleteMin p
-  where keysSelectedForElitism = take 5 $ keys p
+--newPopulation :: Int -> Double -> Double -> Population -> Population
+--newPopulation elitism crossover mutation p = deleteMin p
+--  where keysSelectedForElitism = take elitism $ keys p
+--newPopulation :: RandomGen g => [Condition] -> People -> Int -> Double -> Double -> Population -> g -> Population
+newPopulation :: MonadRandom m => [Condition] -> People -> Int -> Double -> Double -> Int -> Population -> m Population
+newPopulation conditions people elitism crossover mutation populationSize p = do
+  (g1, g2) <- selectTwo p -- Selection
 
-selectTwo :: Population -> (Grouping, Grouping)
-selectTwo p = (p ! 0, p ! 1)
+  let elitismGroupings = Prelude.map snd (take elitism $ toAscList p)
+  groupings <- replicateM (populationSize - length elitismGroupings) (newGrouping crossover mutation p)
+
+  let new = populationFromList conditions people (elitismGroupings ++ groupings)
+
+  return new
+
+newGrouping :: MonadRandom m => Double -> Double -> Population -> m Grouping
+newGrouping crossover mutation p = do
+  willDoCrossover <- decide crossover-- :: Bool
+  selected <- selectTwo p-- :: (Grouping, Grouping)
+  let result = GroupCreator.Groupings.crossover (fst selected) (snd selected) :: Grouping
+  let new = if willDoCrossover then result else (fst selected) :: Grouping
+  willMutate <- decide mutation --TODO: mutate X number of times, where X is the amount of people
+  a <- getRandomR (0, maxBound :: Int)
+  b <- getRandomR (0, maxBound :: Int)
+  c <- getRandomR (0, maxBound :: Int)
+  let new' = if willMutate then (mutate a b c new) else new :: Grouping
+  return new
+
+main = do
+  g <- getStdGen
+  let r = evalRand (newP) g :: Double
+  putStrLn $ "result " ++ show r
+
+newP = do
+  ret <- getRandomR (0.0,1.0)
+  return ret
+
+decide :: MonadRandom m => Double -> m Bool
+decide probability = do
+  value <- getRandomR (0.0, 1.0)
+  return $ value > probability
+
+selectTwo :: MonadRandom m => Population -> m (Grouping, Grouping)
+selectTwo p = do
+  let l' = size p
+  let l = fromIntegral $ size p
+  pos1 <- Control.Monad.Random.fromList $ zip [0..l'-1] [l,l-1..]
+  pos2 <- Control.Monad.Random.fromList $ zip [0..l'-1] [l,l-1..]
+--  pos1 <- getRandomR (0, size p - 1)
+--  pos2 <- getRandomR (0, size p - 1)
+--TODO: pos1 and pos2 shouldn't be the same
+  return $ (snd (elemAt pos1 p), snd (elemAt pos2 p))
 
 bestIn :: Population -> Grouping
 bestIn p = snd $ findMin p
+
+bestFitnessIn :: Population -> Double
+bestFitnessIn p = fst $ findMin p
