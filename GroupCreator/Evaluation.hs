@@ -8,6 +8,7 @@ import GroupCreator.People
 import Data.List
 import Data.Ord
 import Data.Map
+import Data.Hash (hash, asWord64)
 
 data Condition = SizeRestriction { groupSize :: Int }
                  --make groups of this many people
@@ -21,9 +22,11 @@ data Condition = SizeRestriction { groupSize :: Int }
                  --if attribute is "sex", groups should try to be mixed (3 M 2 F is better than 4 M 1 F)
                deriving (Show)
 
-fitness :: Double -> [Condition] -> People -> Grouping -> Double
-fitness conditionIndex [] people (Grouping grouping) = 0
-fitness conditionIndex (cond:conds) people (Grouping grouping) = (1 + conditionIndex) * (eval cond people grouping) + (fitness (conditionIndex + 1) conds people (Grouping grouping))
+fitness :: [Condition] -> People -> Grouping -> Double
+fitness conditions people grouping = run 0 conditions people grouping
+  where
+    run conditionIndex [] people (Grouping grouping) = fromIntegral (asWord64 $ hash grouping) / 1e25
+    run conditionIndex (cond:conds) people (Grouping grouping) = (1 + conditionIndex) * (eval cond people grouping) + (run (conditionIndex + 1) conds people (Grouping grouping))
 
 -- The higher the number, the worse the result of this evaluation
 eval :: Condition -> People -> [[Int]] -> Double
