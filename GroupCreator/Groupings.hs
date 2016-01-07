@@ -40,9 +40,14 @@ interleaved acc (x:xs) y = if (x `intersect` acc) == []
                            then (x:interleaved (acc ++ x) y xs) --swap xs and y
                            else interleaved acc xs y
 
+mutate :: [Maybe (Int, Int, Int)] -> Grouping -> Grouping
+mutate [] grouping = grouping
+mutate (Nothing : xs) grouping = mutate xs grouping
+mutate (Just (a,b,c) : xs) grouping = mutate xs $ mutateSingle a b c grouping
+
 -- The three given Ints can be random integers
-mutate :: Int -> Int -> Int -> Grouping -> Grouping
-mutate sourceI destinationI personI (Grouping grouping)
+mutateSingle :: Int -> Int -> Int -> Grouping -> Grouping
+mutateSingle sourceI destinationI personI (Grouping grouping)
   | source == destination = Grouping grouping
   | otherwise = Grouping $ replaceOnce destination destination' . replaceOnce source source' $ grouping
     where
@@ -53,8 +58,9 @@ mutate sourceI destinationI personI (Grouping grouping)
       person = source !! (mod personI personCountInSource)
       source' = source \\ [person]
       destination' = destination ++ [person]
-      replaceOnce :: Eq a => a -> a -> [a] -> [a]
       replaceOnce _ _ [] = []
-      replaceOnce a b (x:xs) = if x == a
-        then b : xs
-        else x : replaceOnce a b xs
+      replaceOnce a b (x:xs)
+        | a == x = if b == []
+            then xs
+            else (b : xs)
+        | otherwise = x : replaceOnce a b xs

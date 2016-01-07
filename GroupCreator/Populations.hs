@@ -6,6 +6,7 @@ module GroupCreator.Populations
 , bestIn
 , bestFitnessIn
 , newP
+, decide
 ) where
 
 import Data.Map
@@ -20,7 +21,7 @@ import System.Random.Shuffle (shuffleM)
 type Population = Map Double Grouping
 
 populationFromList conditions people groupings = Data.Map.fromList $ Prelude.map convert groupings
-  where convert a = (fitness 0 conditions people a, a)
+  where convert a = (fitness conditions people a, a)
 
 randomGrouping :: MonadRandom m => Int -> Int -> m Grouping
 randomGrouping people groupSize = do
@@ -46,10 +47,6 @@ randomPopulation conditions people populationSize = do
     mutations, so for 100 people, there will probably always be 1
     mutation.
 -}
---newPopulation :: Int -> Double -> Double -> Population -> Population
---newPopulation elitism crossover mutation p = deleteMin p
---  where keysSelectedForElitism = take elitism $ keys p
---newPopulation :: RandomGen g => [Condition] -> People -> Int -> Double -> Double -> Population -> g -> Population
 newPopulation :: MonadRandom m => [Condition] -> People -> Int -> Double -> Double -> Int -> Population -> m Population
 newPopulation conditions people elitism crossover mutation populationSize p = do
   (g1, g2) <- selectTwo p -- Selection
@@ -67,12 +64,18 @@ newGrouping crossover mutation p = do
   selected <- selectTwo p-- :: (Grouping, Grouping)
   let result = G.crossover (fst selected) (snd selected) :: Grouping
   let new = if willDoCrossover then result else (fst selected) :: Grouping
-  willMutate <- decide mutation --TODO: mutate X number of times, where X is the amount of people
+  let peopleCount (Grouping grouping) = sum $ Prelude.map length grouping
+  mutations <- replicateM (peopleCount new) (defineMutation mutation)
+  let mutant = mutate mutations new
+  return mutant
+
+defineMutation probability = do
+  willMutate <- decide probability
   a <- getRandomR (0, maxBound :: Int)
   b <- getRandomR (0, maxBound :: Int)
   c <- getRandomR (0, maxBound :: Int)
-  let new' = if willMutate then (mutate a b c new) else new :: Grouping
-  return new
+  let result = if willMutate then Just (a,b,c) else Nothing
+  return result
 
 main = do
   g <- getStdGen
@@ -86,7 +89,7 @@ newP = do
 decide :: MonadRandom m => Double -> m Bool
 decide probability = do
   value <- getRandomR (0.0, 1.0)
-  return $ value > probability
+  return $ value < probability
 
 selectTwo :: MonadRandom m => Population -> m (Grouping, Grouping)
 selectTwo p = do
@@ -94,9 +97,6 @@ selectTwo p = do
   let l = fromIntegral $ size p
   pos1 <- Control.Monad.Random.fromList $ zip [0..l'-1] [l,l-1..]
   pos2 <- Control.Monad.Random.fromList $ zip [0..l'-1] [l,l-1..]
---  pos1 <- getRandomR (0, size p - 1)
---  pos2 <- getRandomR (0, size p - 1)
---TODO: pos1 and pos2 shouldn't be the same
   return $ (snd (elemAt pos1 p), snd (elemAt pos2 p))
 
 bestIn :: Population -> Grouping

@@ -1,22 +1,41 @@
 import GroupCreator.Evaluation
 import GroupCreator.Populations
+import GroupCreator.Groupings
 import GroupCreator.People
 import Data.Map
 import Control.Monad.Random
 import Control.Monad.Loops
+import Control.Monad (replicateM)
 
 -- These are percentages: 1 == 100%
 elitismFactor = 0.05
 crossoverFactor = 0.3
-mutationFactor = 0.3
+mutationFactor = 0.07
 -- How big are populations?
 populationSize = 100
-maxPopulations = 500
+maxPopulations = 300
 
 selectTwo2 p = do
   ret <- getRandomR (0,size p)
   ret2 <- getRandomR (0,size p)
   return (ret, ret2)
+
+tests count elitismFactor crossoverFactor mutationFactor populationSize maxPopulations = do
+  let run = main2 elitismFactor crossoverFactor mutationFactor populationSize maxPopulations
+  results <- replicateM count run
+  print results
+  let results2 = Prelude.map fst results
+  print results2
+  print $ sum results2 / (fromIntegral $ length results2)
+
+main2 elitismFactor crossoverFactor mutationFactor populationSize maxPopulations = do
+  let elitism = ceiling $ fromIntegral populationSize * elitismFactor
+  p <- randomPopulation conditions people populationSize
+
+  let stopCondition (i, p) = i == maxPopulations || 0 == bestFitnessIn p
+  let evolve (i, p) = fmap (\p' -> (i + 1, p')) (newPopulation conditions people elitism crossoverFactor mutationFactor populationSize p)
+  (generationsRan, new) <- iterateUntilM stopCondition evolve (0, p)
+  return $ findMin new
 
 main = do
 --  let g = mkStdGen 1 --TODO seed value as parameter
@@ -28,14 +47,20 @@ main = do
   (generationsRan, new) <- iterateUntilM stopCondition evolve (0, p)
 
   print $ findMin p
+  print $ showAttr 0 (snd $ findMin p) people
   print $ findMin new
+  print $ showAttr 0 (snd $ findMin new) people
   print $ generationsRan
 
 conditions =
-  [ SizeRestriction 4
+  [ SizeRestriction 3
   , Friends 5 10
   , Peers 0
   ]
+
+showAttr which (Grouping grouping) people = grouping2
+  where
+    grouping2 = Prelude.map (\group -> Prelude.map (\person -> enumValue (people ! person ! which)) group) grouping
 
 {-
   30 people, keys 0 to 29
