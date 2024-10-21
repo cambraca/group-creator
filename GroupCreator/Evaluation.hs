@@ -1,10 +1,10 @@
-module GroupCreator.Evaluation
+module Evaluation
 ( Condition(..)
 , fitness
 ) where
 
-import GroupCreator.Groupings
-import GroupCreator.People
+import Groupings
+import People
 import Data.List
 import Data.Ord
 import Data.Map

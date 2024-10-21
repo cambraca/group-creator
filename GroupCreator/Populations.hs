@@ -1,4 +1,4 @@
-module GroupCreator.Populations
+module Populations
 ( Population(..)
 , randomPopulation
 , newPopulation
@@ -11,9 +11,9 @@ module GroupCreator.Populations
 
 import Data.Map
 import Data.List.Split (chunksOf)
-import GroupCreator.Groupings as G
-import GroupCreator.Evaluation as E
-import GroupCreator.People
+import Groupings as G
+import Evaluation as E
+import People
 import Control.Monad
 import Control.Monad.Random
 import System.Random.Shuffle (shuffleM)
@@ -51,7 +51,7 @@ newPopulation :: MonadRandom m => [Condition] -> People -> Int -> Double -> Doub
 newPopulation conditions people elitism crossover mutation populationSize p = do
   (g1, g2) <- selectTwo p -- Selection
 
-  let elitismGroupings = Prelude.map snd (take elitism $ toAscList p)
+  let elitismGroupings = Prelude.map snd (Prelude.take elitism $ toAscList p)
   groupings <- replicateM (populationSize - length elitismGroupings) (newGrouping crossover mutation p)
 
   let new = populationFromList conditions people (elitismGroupings ++ groupings)

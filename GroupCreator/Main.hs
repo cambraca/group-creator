@@ -1,7 +1,7 @@
-import GroupCreator.Evaluation
-import GroupCreator.Populations
-import GroupCreator.Groupings
-import GroupCreator.People
+import Evaluation
+import Populations
+import Groupings
+import People
 import Data.Map
 import Control.Monad.Random
 import Control.Monad.Loops
@@ -42,15 +42,17 @@ main = do
   let elitism = ceiling $ fromIntegral populationSize * elitismFactor
   p <- randomPopulation conditions people populationSize
 
+  putStrLn $ "Best initial grouping (from random population): " ++ show (findMin p)
+--  print $ showAttr 0 (snd $ findMin p) people
+  putStrLn "Running..."
+
   let stopCondition (i, p) = i == maxPopulations || 0 == bestFitnessIn p
   let evolve (i, p) = fmap (\p' -> (i + 1, p')) (newPopulation conditions people elitism crossoverFactor mutationFactor populationSize p)
   (generationsRan, new) <- iterateUntilM stopCondition evolve (0, p)
 
-  print $ findMin p
-  print $ showAttr 0 (snd $ findMin p) people
-  print $ findMin new
-  print $ showAttr 0 (snd $ findMin new) people
-  print $ generationsRan
+  putStrLn $ "Result: " ++ show (findMin new)
+--  print $ showAttr 0 (snd $ findMin new) people
+  putStrLn $ "Generations: " ++ show generationsRan
 
 conditions =
   [ SizeRestriction 3

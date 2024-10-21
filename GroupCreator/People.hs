@@ -1,4 +1,4 @@
-module GroupCreator.People
+module People
 ( Person(..)
 , People(..)
 , Attribute(..)

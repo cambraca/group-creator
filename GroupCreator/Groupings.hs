@@ -1,4 +1,4 @@
-module GroupCreator.Groupings
+module Groupings
 ( Grouping(..)
 , crossover
 , mutate
